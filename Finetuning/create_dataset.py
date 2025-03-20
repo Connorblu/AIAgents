@@ -48,18 +48,18 @@ for index, row in all_playlists.iterrows():
     completion = "I recommend you listen to " + row["Track Name"] + " by " + row["Artist Name(s)"] + "!"
 
     data = [{
-        "from": "human",
-        "value": prompt
+        "role": "human",
+        "content": prompt
     }, {
-        "from": "assistant",
-        "value": completion
+        "role": "assistant",
+        "content": completion
     }]
 
     data_list.append({
         "id": index,
-        "conversations": data
+        "messages": data
     })
 
-    with open('song_recommendations.json', 'w', encoding='utf-8') as f:
-        json.dump(data_list, f, ensure_ascii=False, indent=2)
+with open('song_recommendations.json', 'w', encoding='utf-8') as f:
+    json.dump(data_list, f, ensure_ascii=False, indent=2)
 
