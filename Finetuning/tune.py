@@ -1,5 +1,4 @@
 from unsloth import FastLanguageModel
-import torch
 from dotenv import load_dotenv
 import os
 
@@ -11,9 +10,9 @@ max_seq_length = 2048
 dtype = None # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
 load_in_4bit = True # Use 4bit quantization to reduce memory usage.
 
-#Initially I will be using Llama 3.1 to test the idea on a smaller model.
+#Initially I will be using Llama 3.2 to test the idea on a smaller model.
 model, tokenizer = FastLanguageModel.from_pretrained(
-    model_name = "unsloth/Llama-3.2-1B-bnb-4bit",
+    model_name = "unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
     max_seq_length = max_seq_length,
     dtype = dtype,
     load_in_4bit = load_in_4bit,
@@ -30,7 +29,6 @@ model = FastLanguageModel.get_peft_model(
     lora_dropout = 0, # Supports any, but = 0 is optimized
     bias = "none",    # Supports any, but = "none" is optimized
     use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
-    random_state = 3407,
     use_rslora = False,  # We support rank stabilized LoRA
     loftq_config = None, # And LoftQ
 )
@@ -40,14 +38,14 @@ from unsloth.chat_templates import get_chat_template
 #This ensures that we are using the correct chat template for our chosen model
 tokenizer = get_chat_template(
     tokenizer,
-    chat_template = "llama-3.2",
+    chat_template = "llama-3.1",
 )
 
 def formatting_prompts_func(examples):
-    convos = examples["conversations"]
+    convos = examples["messages"]
     texts = [tokenizer.apply_chat_template(convo, tokenize = False, add_generation_prompt = False) for convo in convos]
     return { "text" : texts, }
-pass
+
 
 from datasets import load_dataset
 dataset = load_dataset("Connorblu/my-music-dataset", split = "train")
@@ -57,8 +55,9 @@ dataset = standardize_sharegpt(dataset)
 dataset = dataset.map(formatting_prompts_func, batched = True,)
 
 #sanity check
-dataset[5]["conversations"]
-dataset[5]["text"]
+print(dataset[5]["messages"])
+print(dataset[5]["text"])
+print( )
 
 from trl import SFTTrainer
 from transformers import TrainingArguments, DataCollatorForSeq2Seq
@@ -86,17 +85,11 @@ trainer = SFTTrainer(
         optim = "adamw_8bit",
         weight_decay = 0.01,
         lr_scheduler_type = "linear",
-        seed = 3407,
         output_dir = "outputs",
         report_to = "none", # Use this for WandB etc
     ),
 )
 
-from unsloth.chat_templates import train_on_responses_only
-trainer = train_on_responses_only(
-    trainer,
-    instruction_part = "<|start_header_id|>user<|end_header_id|>\n\n",
-    response_part = "<|start_header_id|>assistant<|end_header_id|>\n\n",
-)
+trainer.train()
 
-trainer_stats = trainer.train()
+model.save_pretrained("lora_music_model4")  # Local saving

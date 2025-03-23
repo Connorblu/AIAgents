@@ -2,3 +2,7 @@ venv_finetune/*
 Finetuning/my-music-dataset
 agentEnv/*
 .env
+Finetuning/lora_music_model4
+Finetuning/outputs
+Finetuning/unsloth_compiled_cache
+Finetuning/spotify_playlists
